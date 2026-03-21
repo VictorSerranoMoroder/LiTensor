@@ -1,0 +1,12 @@
+CompileFlags:
+  Add:
+    - --gcc-toolchain=/nix/store/a245z3cvf9x9sn0xlk6k8j9xhxbhda1z-gcc-wrapper-15.2.0
+    - -isystem
+    - /nix/store/a245z3cvf9x9sn0xlk6k8j9xhxbhda1z-gcc-15.2.0/include/c++/15.2.0
+
+If:
+  PathMatch: .*\.cu
+CompileFlags:
+  Remove:
+    - -x
+    - cuda
