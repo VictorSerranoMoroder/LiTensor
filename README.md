@@ -1,6 +1,6 @@
-# Featherlight
+# LiTensor
 
-Featherlight is a lightweight C++ tensor abstraction designed for high-performance computing and GPU interoperability.
+LiTensor is a lightweight C++ tensor abstraction designed for high-performance computing and GPU (CUDA) interoperability.
 This library provides a minimal foundation for working with N-dimensional data across host and device memory.
 
 ## Features
@@ -11,11 +11,10 @@ This library provides a minimal foundation for working with N-dimensional data a
 - GPU-ready design with device memory support
 - Lightweight and composable utilities
 
-
 ---
 
 ## Core Concepts
-Understanding these concepts is essential to correctly use Featherlight.
+Understanding these concepts is essential to correctly use LiTensor.
 
 ### Shape
 Defines the size of each dimension:
@@ -73,7 +72,7 @@ A **RAII** **host-only** N-dimensional dense tensor with contiguous storage. Onl
 
 **Responsibilities**:
 - Stores shape and stride
-- Provides multi-dimensional indexing via `operator()'
+- Provides multi-dimensional indexing via 'operator()'
 - Owns and manages the underlying memory
 
 Example:

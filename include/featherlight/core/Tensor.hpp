@@ -58,13 +58,13 @@ namespace core
             }
         }
 
-        /// @brief Constructs a tensor with the given shape and prefilled data.
+        /// @brief Constructs a tensor with the given shape and prefilled data. (Copy)
         ///
         /// @param[in] shape Vector of dimension sizes. Must match the tensor's rank.
         /// @param[in] data  Pointer to contiguous data of size matching the product of shape elements.
         /// @throws std::invalid_argument if shape is empty, rank mismatch, or data pointer is null.
-        Tensor(const std::vector<std::uint32_t>& shape, TData* data)
-            : data_{}
+        Tensor(const std::vector<std::uint32_t>& shape, const std::vector<TData>& data)
+            : data_{data}
             , shape_{shape}
             , strides_{}
         {
@@ -73,14 +73,47 @@ namespace core
                 throw std::invalid_argument("Shape cannot be empty");
             }
 
-            if (!data)
+            const auto expected_size =
+            std::accumulate(shape.begin(), shape.end(),
+                            std::uint32_t{1}, std::multiplies<std::uint32_t>());
+
+            if (data_.size() != expected_size)
             {
-                throw std::invalid_argument("Data pointer cannot be null");
+                throw std::invalid_argument("Data vector does not correspond with given shape");
             }
 
-            // Compute total size
-            auto size = std::accumulate(shape.begin(), shape.end(), uint32_t{1}, std::multiplies<uint32_t>());
-            data_.assign(data, data + size);
+            // Compute strides for each dimension
+            strides_ = utils::compute_tensor_strides(shape_);
+
+            if (strides_.size() != static_cast<std::uint32_t>(Rank))
+            {
+                throw std::invalid_argument("Tensor rank does not match with given dimensions");
+            }
+        }
+
+        /// @brief Constructs a tensor with the given shape and given data (Move).
+        ///
+        /// @param[in] shape Vector of dimension sizes. Must match the tensor's rank.
+        /// @param[in] data  Pointer to contiguous data of size matching the product of shape elements.
+        /// @throws std::invalid_argument if shape is empty, rank mismatch, or data pointer is null.
+        Tensor(const std::vector<std::uint32_t>& shape, std::vector<TData>&& data)
+            : data_{std::move(data)}
+            , shape_{shape}
+            , strides_{}
+        {
+            if (shape.empty())
+            {
+                throw std::invalid_argument("Shape cannot be empty");
+            }
+
+            const auto expected_size =
+            std::accumulate(shape.begin(), shape.end(),
+                            std::uint32_t{1}, std::multiplies<std::uint32_t>());
+
+            if (data_.size() != expected_size)
+            {
+                throw std::invalid_argument("Data vector does not correspond with given shape");
+            }
 
             // Compute strides for each dimension
             strides_ = utils::compute_tensor_strides(shape_);
@@ -164,6 +197,26 @@ namespace core
             return data_.size();
         }
 
+        /// @brief Direct access operator
+        ///
+        /// @param[in] index Vector of indices per dimension
+        /// @throws std::out_of_range if any index is out of bounds
+        /// @return Non constant reference to the element
+        TData& operator[](const std::size_t index)
+        {
+            return data_.at(index);
+        }
+
+        /// @brief Direct access operator
+        ///
+        /// @param[in] index Vector of indices per dimension
+        /// @throws std::out_of_range if any index is out of bounds
+        /// @return Constant reference to the element
+        const TData& operator[](const std::size_t index) const
+        {
+            return data_.at(index);
+        }
+
         /// @brief Access an element using multi-dimensional indices.
         ///
         /// @param[in] indices Vector of indices per dimension
@@ -172,7 +225,7 @@ namespace core
         /// @return Non constant reference to the element
         TData& operator()(const std::vector<std::uint32_t>& indices)
         {
-            return data_[utils::compute_tensor_offset(indices, strides_)];
+            return data_.at(compute_offset(indices));
         }
 
         /// @brief Access an element using multi-dimensional indices. (Constant)
@@ -183,7 +236,7 @@ namespace core
         /// @return Constant reference to the element
         const TData& operator()(const std::vector<std::uint32_t>& indices) const
         {
-            return data_[utils::compute_tensor_offset(indices, strides_)];
+            return data_.at(compute_offset(indices));
         }
 
         private:

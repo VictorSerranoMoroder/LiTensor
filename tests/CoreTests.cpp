@@ -10,9 +10,42 @@ extern "C" {
 }
 
 #include <filesystem>
+#include <utility>
 
 #include <featherlight/core/Tensor.hpp>
 #include <featherlight/core/Definitions.hpp>
+
+TEST(CoreTests, BasicAccess)
+{
+    std::vector<float> values{1,2,3,4,5,6,7,8,9};
+    core::Tensor<float, core::LAYOUT_TYPE::DUAL_CHANNEL> tensorA{
+        {3,3},
+        std::move(values)
+    };
+
+    // Values should have been emptied
+    ASSERT_TRUE(values.empty());
+
+    // Linear access
+    ASSERT_EQ(tensorA[0], 1);
+    ASSERT_EQ(tensorA[4], 5);
+    ASSERT_EQ(tensorA[8], 9);
+
+    // Multi-dimensional access
+    ASSERT_EQ(tensorA({0,0}), 1);
+    ASSERT_EQ(tensorA({0,1}), 2);
+    ASSERT_EQ(tensorA({1,0}), 4);
+    ASSERT_EQ(tensorA({2,2}), 9);
+
+    //Check write
+    tensorA({0,0}) = 42;
+    ASSERT_EQ(tensorA({0,0}), 42);
+
+    // Check bounds
+    ASSERT_THROW(tensorA[100], std::out_of_range);
+    ASSERT_THROW(tensorA({5,0}), std::out_of_range);
+    ASSERT_THROW(tensorA({0}), std::invalid_argument);
+}
 
 TEST(CoreTests, ImageAllocation)
 {
@@ -29,7 +62,12 @@ TEST(CoreTests, ImageAllocation)
 
     ASSERT_NE(rawA, nullptr);
 
+    // Update to required channels
+    channels = STBI_rgb;
+
     const std::uint32_t size = width * height * channels;
+    std::vector<float> normA {utils::normalize_to_float(rawA, size)};
+    ASSERT_EQ(normA.size(), size);
 
     core::Tensor<float,core::LAYOUT_TYPE::WHC_LAYOUT> tensorA{
         {
@@ -37,7 +75,7 @@ TEST(CoreTests, ImageAllocation)
             static_cast<std::uint32_t>(height),
             static_cast<std::uint32_t>(channels)
         },
-        utils::normalize_to_float(rawA, size).data()
+        std::move(normA)
     };
 
     // --- Write back as PNG (lossless) ---
@@ -62,18 +100,17 @@ TEST(CoreTests, ImageAllocation)
         {static_cast<std::uint32_t>(width),
          static_cast<std::uint32_t>(height),
          static_cast<std::uint32_t>(channels)},
-        utils::normalize_to_float(rawB, size).data()
+        std::move(utils::normalize_to_float(rawB, size))
     };
 
     stbi_image_free(rawB);
 
     // --- Compare tensors ---
     ASSERT_EQ(tensorA.size(), tensorB.size());
-
     for (std::uint32_t i = 0; i < tensorA.size(); ++i)
     {
-        EXPECT_NEAR(tensorA.data()[i],
-                    tensorB.data()[i],
+        EXPECT_NEAR(tensorA[i],
+                    tensorB[i],
                     1e-5f);
     }
 }
@@ -104,7 +141,7 @@ TEST(CoreTests, TensorRankInvalid)
                 static_cast<std::uint32_t>(height),
                 static_cast<std::uint32_t>(channels)
             },
-            utils::normalize_to_float(rawA, size).data()
+            utils::normalize_to_float(rawA, size)
         };
         FAIL() << "Expected exception to be thrown, invalid ranks";
     }

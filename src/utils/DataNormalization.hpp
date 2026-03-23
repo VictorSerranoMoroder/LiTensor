@@ -8,8 +8,7 @@ namespace utils
 {
     std::vector<float> normalize_to_float(std::uint8_t* input, int size)
     {
-        std::vector<float> output {};
-        output.reserve(size);
+        std::vector<float> output (size);
 
         constexpr double scale = 1.0 / 255.0;
 
